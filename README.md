@@ -1,5 +1,8 @@
 # NSX-T API Toolkit
 
+![image](https://github.com/user-attachments/assets/5a90f1eb-843b-49b1-bc88-31ad7985bd90)
+
+
 A modern, modular, and interactive toolkit for managing VMware NSX-T via its REST API.
 
 The main goal of this was to make it easier to replace NSX-T self-signed Certs with your own CA-Signed Certs similiar to this guide:
@@ -66,7 +69,7 @@ cd nsx-api.sh
 ### 2. **Install Astral UV (if not already installed)**
 
 ```sh
-pip install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 or see [Astral UV install docs](https://github.com/astral-sh/uv#installation).
 
@@ -121,6 +124,12 @@ The original Bash toolkit is archived in [`Archive/nsx-api.sh`](Archive/nsx-api.
 ## License
 
 MIT
+
+## Disclaimer
+
+This project is an independent, community-driven toolkit and is **not affiliated with, endorsed by, or supported by VMware, Inc.**  
+All trademarks, product names, and company names or logos mentioned are the property of their respective owners.  
+Use at your own risk.
 
 ---
 
