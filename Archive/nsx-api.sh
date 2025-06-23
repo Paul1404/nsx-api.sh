@@ -20,15 +20,16 @@ spinner() {
     local pid=$1
     local delay=0.1
     local spinstr='|/-\'
-    tput civis 2>/dev/null || true
+    tput civis 2>/dev/null >&2 || true
     while kill -0 "$pid" 2>/dev/null; do
         for c in $spinstr; do
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
             printf "\r\033[36m[%c] Working...\033[0m" "$c" >&2
             sleep $delay
         done
     done
     printf "\r\033[K" >&2
-    tput cnorm 2>/dev/null || true
+    tput cnorm 2>/dev/null >&2 || true
 }
 
 # --- Prompt helpers ---
@@ -97,34 +98,39 @@ api_call() {
 list_certs() {
     local certs_json
     certs_json=$(api_call GET "/api/v1/trust-management/certificates")
-    # Uncomment for debugging:
-    # echo "Raw API response:"
-    # echo "$certs_json"
-    readarray -t cert_lines < <(echo "$certs_json" | jq -r '
-        .results[] |
-        [
-            .display_name // "-",
-            .category // "-",
-            .type // "-",
-            .expiration_date // "-",
-            .subject_cn // "-",
-            .issuer_cn // "-",
-            .in_use // "-"
-        ] | @tsv
-    ')
-    echo -e "\033[1;34m#  Name\t\tCategory\tType\tExpiry\tSubject\tIssuer\tInUse\033[0m"
-    for i in "${!cert_lines[@]}"; do
-        printf "%2d %s\n" "$i" "${cert_lines[$i]}"
-    done
-    # Always return JSON for use in pick_cert
-    echo "$certs_json"
+    if [[ "${1:-}" == "--table" ]]; then
+        readarray -t cert_lines < <(echo "$certs_json" | jq -r '
+            .results[] |
+            [
+                .display_name // "-",
+                .category // "-",
+                .type // "-",
+                .expiration_date // "-",
+                .subject_cn // "-",
+                .issuer_cn // "-",
+                .in_use // "-"
+            ] | @tsv
+        ')
+        echo -e "\033[1;34m#  Name\t\tCategory\tType\tExpiry\tSubject\tIssuer\tInUse\033[0m"
+        for i in "${!cert_lines[@]}"; do
+            printf "%2d %s\n" "$i" "${cert_lines[$i]}"
+        done
+        read -rp "Press Enter to continue..."
+    else
+        echo "$certs_json"
+    fi
 }
 
 pick_cert() {
     local certs_json
-    certs_json=$(list_certs --table)
+    certs_json=$(list_certs)
     local total
     total=$(echo "$certs_json" | jq '.results | length')
+    if [[ -z "$total" || "$total" -eq 0 ]]; then
+        echo -e "\033[31mNo certificates found!\033[0m"
+        return 1
+    fi
+    list_certs --table
     local idx
     while true; do
         read -rp "Pick certificate by index (0-$(($total-1))): " idx
@@ -213,12 +219,12 @@ main() {
         echo "0) Exit"
         read -rp "Choose an option: " opt
         case "$opt" in
-            1) list_certs >/dev/null ;; # Output handled in pick_cert
-            2) validate_cert ;;
-            3) disable_crl_checking ;;
-            4) apply_cert_cluster ;;
-            5) apply_cert_node ;;
-            6) show_assignments ;;
+            1) list_certs; read -rp "Press Enter to continue..." ;;
+            2) validate_cert; read -rp "Press Enter to continue..." ;;
+            3) disable_crl_checking; read -rp "Press Enter to continue..." ;;
+            4) apply_cert_cluster; read -rp "Press Enter to continue..." ;;
+            5) apply_cert_node; read -rp "Press Enter to continue..." ;;
+            6) show_assignments; read -rp "Press Enter to continue..." ;;
             7)
                 read -rp "HTTP method: " m
                 read -rp "Endpoint: " e
